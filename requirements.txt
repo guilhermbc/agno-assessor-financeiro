@@ -1,6 +1,17 @@
+<<<<<<< HEAD
 agno
 groq
 python-dotenv
 yfinance
 faker
 pandas
+=======
+python-dotenv
+agno
+groq
+yfinance
+duckduckgo-search
+ddgs
+>>>>>>> 40690c9295d4c83b5724347c8dbf1a44572f0e41
+
+reflex==0.9.5.post2
