@@ -54,12 +54,13 @@ O agente realiza um *onboarding* conversacional para descobrir os hobbies do usu
 3. Instale as dependências Python:
 
 Bash
-    pip install reflex agno groq yfinance pandas python-dotenv
+    pip install -r requirements.txt
 
-4. Instale o Bun (Motor de compilação do Reflex):
+4. Instale o Bun (Motor de compilação do Reflex) e inicia o reflex:
 
 Bash    
     npm install -g bun
+    reflex init
 
 5. Configuração de Variáveis de Ambiente:
 
