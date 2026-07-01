@@ -102,7 +102,7 @@ class AdvisorState(rx.State):
                     descricao_limpa = linha.descricao.strip()
                     tipo_limpo = linha.tipo.strip()
 
-                    print(f"Transação: {linha.data} - {descricao_limpa} | R$ {linha.valor} ({tipo_limpo})")
+                    # print(f"Transação: {linha.data} - {descricao_limpa} | R$ {linha.valor} ({tipo_limpo})")
                     
                     # Colocar data no banco ...
                     db.add(Transaction(category=descricao_limpa, amount=linha.valor, type=tipo_limpo))
