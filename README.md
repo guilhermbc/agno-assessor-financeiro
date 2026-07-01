@@ -41,42 +41,58 @@ O agente realiza um *onboarding* conversacional para descobrir os hobbies do usu
    ```bash
    git clone https://github.com/guilhermbc/agno-assessor-financeiro.git
    cd agno-assessor-financeiro
+   ```
 
 2. **Crie e ative o ambiente virtual:**
 
-    Bash
+    ```Bash
     python -m venv venv
-    # No Windows:
+    ```
+
+    No Windows:
+    ```Bash
     .\venv\Scripts\activate
-    # No Linux/Mac:
+    ```
+    No Linux/Mac:
+    ```Bash
     source venv/bin/activate
+    ```
 
 3. Instale as dependências Python:
 
-Bash
+    ```Bash
     pip install -r requirements.txt
+    ```
 
 4. Instale o Bun (Motor de compilação do Reflex) e inicia o reflex:
 
-Bash    
+    ```Bash    
     npm install -g bun
     reflex init
+    ```
 
 5. Configuração de Variáveis de Ambiente:
 
-    Crie um arquivo chamado .env na raiz do projeto. ATENÇÃO: Este arquivo não deve ser comitado no Git.
+    Crie um arquivo chamado .env na raiz do projeto. 
+    
+    ATENÇÃO: Este arquivo não deve ser comitado no Git.
 
     Snippet de código
+    ```
     GROQ_API_KEY="sua_chave_api_aqui"
+    ```
 
 6. Inicie a aplicação:
 
-Bash
+    ```Bash
     reflex run
+    ```
 ## Acesse no seu navegador: http://localhost:3000
 
 🧪 Notas sobre Dados Sensíveis
+
 Conforme as regras da disciplina, é estritamente proibido o uso de dados financeiros reais. Para testar a aplicação, utilizamos planilhas e gastos gerados com dados sintéticos (ex: utilizando a biblioteca Faker).
 
 🧠 Análise de Reasoning Traces (Avaliação Crítica)
+
 (Seção reservada para a entrega final do projeto, onde serão documentadas as análises de pelo menos cinco execuções reais do agente, detalhando chamadas de ferramentas e tratamentos de alucinação).
