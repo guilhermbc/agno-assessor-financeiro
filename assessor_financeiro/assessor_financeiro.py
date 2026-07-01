@@ -47,8 +47,29 @@ class AdvisorState(rx.State):
                 if t.type.lower() == "debito":
                     category_totals[t.category] = category_totals.get(t.category, 0) + abs(t.amount)
                     total_gastos += abs(t.amount)
-            
-            self.chart_data = [{"name": k, "value": v} for k, v in category_totals.items()]
+
+            ## Mostrando cores diferentes no grafico de pizza 
+            paleta_financeira = [
+                "#3b82f6",  # Azul Royal
+                "#10b981",  # Verde Esmeralda (Principal)
+                "#ef4444",  # Vermelho Alerta (para débitos altos, se quiser)
+                "#f97316",  # Laranja Vívido
+                "#14b8a6",  # Teal
+                "#8b5cf6",  # Roxo Violeta
+                "#f59e0b",  # Âmbar
+                "#06b6d4",  # Ciano
+                "#a855f7",  # Púrpura
+            ]
+            self.chart_data = [
+                {
+                    "name": str(k), # Garante que a chave seja string para o eixo
+                    "value": float(v), # Garante que o valor seja float/int
+                    # Escolhe a cor baseada no índice i na lista paleta_financeira
+                    "fill": paleta_financeira[i % len(paleta_financeira)]
+                }
+                # category_totals é o resultado do groupby do pandas transformado em dict
+                for i, (k, v) in enumerate(category_totals.items())
+            ]
             
             self.database_summary = f"Total Gasto Registrado: R$ {total_gastos:.2f}\nDetalhamento:\n"
             for k, v in category_totals.items():
