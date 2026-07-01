@@ -19,10 +19,10 @@ class Transaction(rx.Model, table=True):
 
 # --- ESTADO DA APLICAÇÃO ---
 class AdvisorState(rx.State):
-    current_message: str = ""
+    # Removida a variável 'current_message' para otimização de performance. Agora usamos formulário.
     chat_history: list[dict[str, str]] = []
     chart_data: list[dict[str, any]] = []
-    database_summary: str = "" # Texto resumido que o agente conselheiro vai ler
+    database_summary: str = ""
     
     is_loading: bool = False
     is_uploading: bool = False
@@ -39,7 +39,6 @@ class AdvisorState(rx.State):
             
             self.chat_history = [{"role": m.role, "content": m.content} for m in messages]
             
-            # Recalcula o Gráfico e o Resumo para o Agente
             transactions = db.query(Transaction).filter(Transaction.session_id == "default_user").all()
             
             category_totals = {}
@@ -51,13 +50,9 @@ class AdvisorState(rx.State):
             
             self.chart_data = [{"name": k, "value": v} for k, v in category_totals.items()]
             
-            # Formata um resumo para o Llama ler
             self.database_summary = f"Total Gasto Registrado: R$ {total_gastos:.2f}\nDetalhamento:\n"
             for k, v in category_totals.items():
                 self.database_summary += f"- {k}: R$ {v:.2f}\n"
-
-    def set_current_message(self, value: str):
-        self.current_message = value
 
     async def handle_upload(self, files: list[rx.UploadFile]):
         """Lê o CSV real enviado pelo usuário e salva no Banco de Dados."""
@@ -71,7 +66,6 @@ class AdvisorState(rx.State):
             
             with rx.session() as db:
                 for _, row in df.iterrows():
-                    # Trata o valor para ficar positivo no DB se for débito
                     valor = float(row.get("Valor", 0))
                     tipo = row.get("Tipo", "Debito").capitalize()
                     categoria = row.get("Descricao", "Outros")
@@ -80,7 +74,7 @@ class AdvisorState(rx.State):
                 db.commit()
                 
             self.chat_history.append({"role": "agent", "content": "✅ **CSV processado e salvo no banco de dados!** O gráfico já foi atualizado."})
-            self.on_load() # Atualiza UI
+            self.on_load()
             
         except Exception as e:
             self.chat_history.append({"role": "agent", "content": f"Erro ao ler CSV: {str(e)}"})
@@ -93,7 +87,6 @@ class AdvisorState(rx.State):
         extractor = get_data_extractor_agent()
         response = extractor.run(text)
         
-        # Garante que vai pegar apenas o JSON da resposta (evita falhas de formatação do LLM)
         match = re.search(r'\[.*\]', response.content, re.DOTALL)
         if match:
             try:
@@ -107,15 +100,18 @@ class AdvisorState(rx.State):
                                 type=gasto.get("type", "Debito")
                             ))
                         db.commit()
-                    self.on_load() # Atualiza o gráfico em tempo real
+                    self.on_load() 
             except Exception as e:
                 print(f"Erro no parse do JSON: {e}")
 
-    def submit_message(self):
-        if not self.current_message.strip():
+    def submit_message(self, form_data: dict):
+        """Recebe os dados do formulário quando o usuário aperta Enter ou clica em Enviar."""
+        # Extrai a mensagem pelo nome do input (chat_input)
+        user_query = form_data.get("chat_input", "")
+        
+        if not user_query.strip():
             return
 
-        user_query = self.current_message
         historico_formatado = "\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in self.chat_history])
 
         # Salva msg do usuário
@@ -124,15 +120,12 @@ class AdvisorState(rx.State):
             db.add(ChatMessage(role="user", content=user_query))
             db.commit()
             
-        self.current_message = ""
         self.is_loading = True
         yield
 
         try:
-            # 1. Agente Extrator avalia se há gastos novos e salva no DB
             self.extract_transactions_from_text(user_query)
             
-            # 2. Agente Assessor lê o DB atualizado e responde ao usuário
             agent = get_financial_advisor(
                 financial_data=self.database_summary,
                 chat_history=historico_formatado
@@ -158,12 +151,13 @@ class AdvisorState(rx.State):
             db.commit()
         self.on_load()
 
+
 # --- COMPONENTES VISUAIS ---
 def message_bubble(message: dict) -> rx.Component:
     is_user = message["role"] == "user"
     return rx.box(
         rx.markdown(message["content"]),
-        bg=rx.cond(is_user, "blue.100", "gray.100"),
+        bg=rx.cond(is_user, "blue.100", "white"),
         color="black",
         padding="1em",
         border_radius="8px",
@@ -178,7 +172,6 @@ def dashboard_panel() -> rx.Component:
         rx.heading("📊 Visão Geral", size="5"),
         rx.text("Distribuição de Gastos", color="gray"),
         
-        # Gráfico (agora 100% dinâmico)
         rx.recharts.pie_chart(
             rx.recharts.pie(
                 data=AdvisorState.chart_data,
@@ -195,7 +188,6 @@ def dashboard_panel() -> rx.Component:
             width="100%",
         ),
         
-        # Upload de CSV Real
         rx.divider(),
         rx.upload(
             rx.vstack(
@@ -228,7 +220,10 @@ def index() -> rx.Component:
         rx.vstack(
             rx.heading("💰 Assessor Financeiro Inteligente", size="8", margin_bottom="1em"),
             rx.hstack(
-                rx.box(dashboard_panel(), width="35%"),
+                # Coluna Esquerda: Dashboard (Reduzido para dar mais espaço ao chat)
+                rx.box(dashboard_panel(), width="28%"),
+                
+                # Coluna Direita: Chat (Aumentado)
                 rx.vstack(
                     rx.hstack(
                         rx.heading("Chat", size="5"),
@@ -246,26 +241,61 @@ def index() -> rx.Component:
                         padding_bottom="0.5em"
                     ),
                     rx.scroll_area(
-                        rx.vstack(rx.foreach(AdvisorState.chat_history, message_bubble)),
-                        height="500px",
+                        rx.vstack(
+                            # Renderiza as mensagens do histórico
+                            rx.foreach(AdvisorState.chat_history, message_bubble),
+                            
+                            # O novo balão de "Pensamento" que só aparece quando está processando
+                            rx.cond(
+                                AdvisorState.is_loading,
+                                rx.box(
+                                    rx.hstack(
+                                        rx.spinner(size="2"),
+                                        rx.text("Processando e consultando ferramentas...", color="gray", font_size="0.9em", font_style="italic"),
+                                        spacing="3",
+                                        align_items="center"
+                                    ),
+                                    bg="gray.50",
+                                    padding="1em",
+                                    border_radius="8px",
+                                    margin_y="0.5em",
+                                    align_self="flex-start",
+                                    border="1px dashed #ccc"
+                                )
+                            ),
+                            # Garante que a rolagem fique ancorada no final
+                            padding_bottom="2em" 
+                        ),
+                        height="550px", # Aumentamos a altura da caixa de chat
                         width="100%",
                         border="1px solid #eaeaea",
                         padding="1.5em",
                         border_radius="12px",
                         background_color="#fafafa"
                     ),
-                    rx.hstack(
-                        rx.input(
-                            placeholder="Ex: Gastei 150 no borracheiro...",
-                            value=AdvisorState.current_message,
-                            on_change=AdvisorState.set_current_message,
-                            width="100%",
-                            size="3"
+                    
+                    # O Formulário que permite usar a tecla Enter
+                    rx.form(
+                        rx.hstack(
+                            rx.input(
+                                name="chat_input", # Nome que o form_data vai capturar
+                                placeholder="Ex: Gastei 150 no borracheiro...",
+                                width="100%",
+                                size="3"
+                            ),
+                            rx.button(
+                                "Enviar", 
+                                type="submit", # Transforma o botão num gatilho de submit
+                                loading=AdvisorState.is_loading, 
+                                size="3"
+                            ),
+                            width="100%"
                         ),
-                        rx.button("Enviar", on_click=AdvisorState.submit_message, loading=AdvisorState.is_loading, size="3"),
+                        on_submit=AdvisorState.submit_message,
+                        reset_on_submit=True,
                         width="100%"
                     ),
-                    width="65%"
+                    width="90%" 
                 ),
                 width="100%",
                 align_items="start",
@@ -273,7 +303,7 @@ def index() -> rx.Component:
             )
         ),
         padding="2em",
-        max_width="1200px"
+        max_width="1400px" 
     )
 
 app = rx.App()
