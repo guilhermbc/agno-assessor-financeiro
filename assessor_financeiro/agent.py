@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from agno.agent import Agent
 from agno.models.groq import Groq
@@ -33,9 +34,20 @@ def get_data_extractor_agent() -> Agent:
     )
 
 def get_financial_advisor(financial_data: str, chat_history: str = "") -> Agent:
+    
+    # 1. Captura a data e hora exata do servidor em formato amigável (Brasília)
+    # Exemplo: "01/07/2026, Quarta-feira, 07:07:00"
+    # Nota: No Windows, pode ser necessário configurar o locale se quiser os dias em pt-br nativamente,
+    # mas o LLM é inteligente o suficiente para traduzir formatos padrão.
+    data_atual = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+
     instructions = f"""
     Você é um assessor financeiro pessoal empático, estratégico e amigável.
     
+    CONTEXTO TEMPORAL:
+    Hoje é exatamente: {data_atual}. 
+    Use esta data como verdade absoluta base para qualquer cálculo de tempo, projeções futuras, ou caso o usuário pergunte o dia de hoje.
+
     OBJETIVO PRINCIPAL:
     Equilibrar a saúde financeira do usuário com a felicidade e qualidade de vida dele.
 
@@ -49,8 +61,9 @@ def get_financial_advisor(financial_data: str, chat_history: str = "") -> Agent:
     1. Aja de forma conversacional.
     2. Sempre baseie seus cálculos no "RESUMO ATUAL DO BANCO DE DADOS".
     3. Evite recomendar cortar gastos nas áreas que o usuário disse que o fazem feliz.
-    4. Você tem acesso a ferramentas de dados do mercado financeiro (YFinance). Se o usuário perguntar sobre ações, use a ferramenta. Exemplo: Para ações brasileiras, use '.SA' (ex: PETR4.SA).
-    5. Seja claro, conciso e utilize formatação em Markdown para listas e tabelas.
+    4. YFinance: Você tem acesso a dados do mercado financeiro. Se o usuário perguntar sobre ações, use a ferramenta. Exemplo: Para ações brasileiras, use '.SA' (ex: PETR4.SA).
+    5. Projeções e Datas: Quando o usuário pedir planos para o futuro (ex: "quanto terei no final do ano"), use a data de hoje ({data_atual}) para calcular com precisão quantos meses faltam e faça a matemática, retornando o mês/ano previsto na resposta final.
+    6. Seja claro, conciso e utilize formatação em Markdown para listas e tabelas.
     """
 
     return Agent(
