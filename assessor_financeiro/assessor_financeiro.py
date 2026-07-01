@@ -79,26 +79,49 @@ class AdvisorState(rx.State):
         """Lê o CSV real enviado pelo usuário e salva no Banco de Dados."""
         self.is_uploading = True
         yield
+
+        with rx.session() as db:
+            db.add(ChatMessage(role="agent", content="Lendo seu arquivo de transações..."))
+            db.commit()
+        self.on_load() # Atualiza UI
         try:
             file = files[0]
             upload_data = await file.read()
-            df = pd.read_csv(io.BytesIO(upload_data))
+            df = pd.read_csv(
+                io.BytesIO(upload_data),
+                header=None,
+                names=["data", "descricao", "valor", "tipo"],
+                encoding="utf-8" # Garante a leitura correta de acentos como 'Crédito'
+            )
+            print(df.head())
             df.columns = df.columns.str.strip()
             
             with rx.session() as db:
-                for _, row in df.iterrows():
-                    valor = float(row.get("Valor", 0))
-                    tipo = row.get("Tipo", "Debito").capitalize()
-                    categoria = row.get("Descricao", "Outros")
+                for linha in df.itertuples(index=False):
+                    # Remove espaços em branco das strings
+                    descricao_limpa = linha.descricao.strip()
+                    tipo_limpo = linha.tipo.strip()
+
+                    print(f"Transação: {linha.data} - {descricao_limpa} | R$ {linha.valor} ({tipo_limpo})")
                     
-                    db.add(Transaction(category=categoria, amount=valor, type=tipo))
+                    # Colocar data no banco ...
+                    db.add(Transaction(category=descricao_limpa, amount=linha.valor, type=tipo_limpo))
+
                 db.commit()
-                
-            self.chat_history.append({"role": "agent", "content": "✅ **CSV processado e salvo no banco de dados!** O gráfico já foi atualizado."})
-            self.on_load()
+                print("Transações cadastradas no banco.")  
+
+                db.add(ChatMessage(role="agent", content="✅ **CSV processado e salvo no banco de dados!** O gráfico já foi atualizado."))
+                db.commit()
+            self.on_load() # Atualiza UI
+
             
         except Exception as e:
-            self.chat_history.append({"role": "agent", "content": f"Erro ao ler CSV: {str(e)}"})
+            print("Erro no upload. ", e)
+
+            with rx.session() as db:
+                db.add(ChatMessage(role="agent", content="❌ Ocorreu um erro ao tentar salvar os dados da sua planilha... Tente novamente."))
+                db.commit()
+            self.on_load() # Atualiza UI
             
         self.is_uploading = False
         yield
