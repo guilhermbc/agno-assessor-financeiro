@@ -32,7 +32,7 @@ class AdvisorState(rx.State):
         with rx.session() as db:
             messages = db.query(ChatMessage).filter(ChatMessage.session_id == "default_user").all()
             if not messages:
-                welcome_msg = ChatMessage(role="agent", content="Olá! 👋 Sou seu Assessor Financeiro Pessoal. O que te faz feliz no tempo livre?")
+                welcome_msg = ChatMessage(role="agent", content="Olá! 👋 Sou a vivIA, sua Assessora Financeira Pessoal. O que te faz feliz no tempo livre?")
                 db.add(welcome_msg)
                 db.commit()
                 messages = [welcome_msg]
