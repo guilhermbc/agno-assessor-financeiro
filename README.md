@@ -1,4 +1,4 @@
-# 💰 Assessor Financeiro Pessoal Inteligente
+# 💰 vivIA: Sua IA Financeira
 
 ![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-blue)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
