@@ -222,9 +222,6 @@ def message_bubble(message: dict) -> rx.Component:
     is_user = message["role"] == "user"
     return rx.box(
         rx.markdown(message["content"], font_size="0.95em"),
-        # background_color=rx.cond(is_user, "blue.100", "white"),
-        # background_color=rx.cond(is_user, "var(--accent-9)", "var(--gray-3)"),
-        # color="black",
         background_color=rx.cond(is_user, "limegreen", "var(--gray-3)"),
         color=rx.cond(is_user, "white", "var(--gray-12)"),
         padding_left="1em",
