@@ -273,7 +273,7 @@ def index() -> rx.Component:
             ),
             rx.hstack(
                 # Coluna Esquerda: Dashboard (Reduzido para dar mais espaço ao chat)
-                rx.box(dashboard_panel(), width="28%"),
+                rx.box(dashboard_panel(), width="40%"),
                 
                 # Coluna Direita: Chat (Aumentado)
                 rx.vstack(
@@ -318,7 +318,8 @@ def index() -> rx.Component:
                             # Garante que a rolagem fique ancorada no final
                             padding_bottom="2em" 
                         ),
-                        height="550px", # Aumentamos a altura da caixa de chat
+                        # height="550px", # Aumentamos a altura da caixa de chat
+                        height="70vh", # Aumentamos a altura da caixa de chat
                         width="100%",
                         border="1px solid #eaeaea",
                         padding="1.5em",
