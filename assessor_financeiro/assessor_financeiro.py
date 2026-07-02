@@ -394,7 +394,6 @@ def index() -> rx.Component:
                             rx.button(
                                 # Insere o ícone de envio
                                 rx.icon("send", size=22), 
-                                # type="submit",
                                 loading=AdvisorState.is_loading, 
                                 size="3",
                                 variant="solid", # Garante que ele fique preenchido
