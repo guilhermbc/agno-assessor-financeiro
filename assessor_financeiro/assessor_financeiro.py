@@ -302,7 +302,6 @@ def index() -> rx.Component:
                         rx.vstack(
                             # Renderiza as mensagens do histórico
                             rx.foreach(AdvisorState.chat_history, message_bubble),
-                            # rx.box(id="chat-anchor", height="56px"), # Caixa invisíveil para auxilio do scroll automatico
                             
                             # O novo balão de "Pensamento" que só aparece quando está processando
                             rx.cond(
