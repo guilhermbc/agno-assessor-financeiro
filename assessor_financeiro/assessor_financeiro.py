@@ -63,7 +63,7 @@ class AdvisorState(rx.State):
             self.chart_data = [
                 {
                     "name": str(k), # Garante que a chave seja string para o eixo
-                    "value": float(v), # Garante que o valor seja float/int
+                    "value": float(round(v, 2)), # Garante que o valor seja float/int
                     # Escolhe a cor baseada no índice i na lista paleta_financeira
                     "fill": paleta_financeira[i % len(paleta_financeira)]
                 }
