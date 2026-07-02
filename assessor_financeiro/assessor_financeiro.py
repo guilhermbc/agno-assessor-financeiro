@@ -203,12 +203,15 @@ def message_bubble(message: dict) -> rx.Component:
         rx.markdown(message["content"]),
         bg=rx.cond(is_user, "blue.100", "white"),
         color="black",
-        padding="1em",
+        padding_left="1em",
+        padding_right="1em",
+        padding_top="none",
+        padding_bottom="none",
         border_radius="8px",
         margin_y="0.5em",
         align_self=rx.cond(is_user, "flex-end", "flex-start"),
         max_width="80%",
-        box_shadow="0 2px 4px rgba(0,0,0,0.05)"
+        box_shadow="0 2px 4px rgba(0,0,0,0.20)"
     )
 
 def dashboard_panel() -> rx.Component:
