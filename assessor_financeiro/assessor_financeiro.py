@@ -343,7 +343,9 @@ def index() -> rx.Component:
                         height="70vh",  # Aumentamos a altura da caixa de chat
                         width="100%",
                         border="1px solid #eaeaea",
-                        padding="1.5em",
+                        padding_left="1.5em",
+                        padding_right="1.5em",
+                        # padding="1.5em",
                         border_radius="12px",
                         background_color="#fafafa"
                     ),
