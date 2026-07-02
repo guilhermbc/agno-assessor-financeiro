@@ -6,71 +6,73 @@ import re
 from .agent import get_financial_advisor, get_data_extractor_agent
 
 # --- MODELOS DE BANCO DE DADOS (ORM) ---
+
+
 class ChatMessage(rx.Model, table=True):
     role: str
     content: str
     session_id: str = "default_user"
 
+
 class Transaction(rx.Model, table=True):
     category: str
     amount: float
-    type: str 
+    type: str
     session_id: str = "default_user"
 
 # --- ESTADO DA APLICAÇÃO ---
+
+
 class AdvisorState(rx.State):
     # Removida a variável 'current_message' para otimização de performance. Agora usamos formulário.
     chat_history: list[dict[str, str]] = []
     chart_data: list[dict[str, any]] = []
     database_summary: str = ""
-    
+
     is_loading: bool = False
     is_uploading: bool = False
 
     def on_load(self):
         """Carrega e calcula os dados do banco para o Dashboard e para o Agente."""
         with rx.session() as db:
-            messages = db.query(ChatMessage).filter(ChatMessage.session_id == "default_user").all()
+            messages = db.query(ChatMessage).filter(
+                ChatMessage.session_id == "default_user").all()
             if not messages:
-                welcome_msg = ChatMessage(role="agent", content="Olá! 👋 Sou seu Assessor Financeiro Pessoal. O que te faz feliz no tempo livre?")
+                welcome_msg = ChatMessage(
+                    role="agent", content="Olá! 👋 Sou seu Assessor Financeiro Pessoal. O que te faz feliz no tempo livre?")
                 db.add(welcome_msg)
                 db.commit()
                 messages = [welcome_msg]
-            
-            self.chat_history = [{"role": m.role, "content": m.content} for m in messages]
-            
-            transactions = db.query(Transaction).filter(Transaction.session_id == "default_user").all()
-            
+
+            self.chat_history = [
+                {"role": m.role, "content": m.content} for m in messages]
+            transactions = db.query(Transaction).filter(
+                Transaction.session_id == "default_user").all()
+
             category_totals = {}
             total_gastos = 0
             for t in transactions:
-                if t.type.lower() == "debito":
-                    category_totals[t.category] = category_totals.get(t.category, 0) + abs(t.amount)
+                # Blindagem: Aceita débito com acento, sem acento, letras maiúsculas ou vazios.
+                tipo_limpo = str(t.type).lower().strip()
+                if tipo_limpo in ["debito", "débito", "despesa", "gasto"] or not tipo_limpo:
+                    category_totals[t.category] = category_totals.get(
+                        t.category, 0) + abs(t.amount)
                     total_gastos += abs(t.amount)
 
-            ## Mostrando cores diferentes no grafico de pizza 
             paleta_financeira = [
-                "#3b82f6",  # Azul Royal
-                "#10b981",  # Verde Esmeralda (Principal)
-                "#ef4444",  # Vermelho Alerta (para débitos altos, se quiser)
-                "#f97316",  # Laranja Vívido
-                "#14b8a6",  # Teal
-                "#8b5cf6",  # Roxo Violeta
-                "#f59e0b",  # Âmbar
-                "#06b6d4",  # Ciano
-                "#a855f7",  # Púrpura
+                "#3b82f6", "#10b981", "#ef4444", "#f97316",
+                "#14b8a6", "#8b5cf6", "#f59e0b", "#06b6d4", "#a855f7",
             ]
+
             self.chart_data = [
                 {
-                    "name": str(k), # Garante que a chave seja string para o eixo
-                    "value": float(round(v, 2)), # Garante que o valor seja float/int
-                    # Escolhe a cor baseada no índice i na lista paleta_financeira
-                    "fill": paleta_financeira[i % len(paleta_financeira)]
+                    "name": str(k),
+                    "value": float(v),
+                    "fill": str(paleta_financeira[i % len(paleta_financeira)])
                 }
-                # category_totals é o resultado do groupby do pandas transformado em dict
                 for i, (k, v) in enumerate(category_totals.items())
             ]
-            
+
             self.database_summary = f"Total Gasto Registrado: R$ {total_gastos:.2f}\nDetalhamento:\n"
             for k, v in category_totals.items():
                 self.database_summary += f"- {k}: R$ {v:.2f}\n"
@@ -81,9 +83,10 @@ class AdvisorState(rx.State):
         yield
 
         with rx.session() as db:
-            db.add(ChatMessage(role="agent", content="Lendo seu arquivo de transações..."))
+            db.add(ChatMessage(role="agent",
+                   content="Lendo seu arquivo de transações..."))
             db.commit()
-        self.on_load() # Atualiza UI
+        self.on_load()  # Atualiza UI
         try:
             file = files[0]
             upload_data = await file.read()
@@ -91,11 +94,11 @@ class AdvisorState(rx.State):
                 io.BytesIO(upload_data),
                 header=None,
                 names=["data", "descricao", "valor", "tipo"],
-                encoding="utf-8" # Garante a leitura correta de acentos como 'Crédito'
+                encoding="utf-8"  # Garante a leitura correta de acentos como 'Crédito'
             )
             print(df.head())
             df.columns = df.columns.str.strip()
-            
+
             with rx.session() as db:
                 for linha in df.itertuples(index=False):
                     # Remove espaços em branco das strings
@@ -103,26 +106,28 @@ class AdvisorState(rx.State):
                     tipo_limpo = linha.tipo.strip()
 
                     # print(f"Transação: {linha.data} - {descricao_limpa} | R$ {linha.valor} ({tipo_limpo})")
-                    
+
                     # Colocar data no banco ...
-                    db.add(Transaction(category=descricao_limpa, amount=linha.valor, type=tipo_limpo))
+                    db.add(Transaction(category=descricao_limpa,
+                           amount=linha.valor, type=tipo_limpo))
 
                 db.commit()
-                print("Transações cadastradas no banco.")  
+                print("Transações cadastradas no banco.")
 
-                db.add(ChatMessage(role="agent", content="✅ **CSV processado e salvo no banco de dados!** O gráfico já foi atualizado."))
+                db.add(ChatMessage(
+                    role="agent", content="✅ **CSV processado e salvo no banco de dados!** O gráfico já foi atualizado."))
                 db.commit()
-            self.on_load() # Atualiza UI
+            self.on_load()  # Atualiza UI
 
-            
         except Exception as e:
             print("Erro no upload. ", e)
 
             with rx.session() as db:
-                db.add(ChatMessage(role="agent", content="❌ Ocorreu um erro ao tentar salvar os dados da sua planilha... Tente novamente."))
+                db.add(ChatMessage(
+                    role="agent", content="❌ Ocorreu um erro ao tentar salvar os dados da sua planilha... Tente novamente."))
                 db.commit()
-            self.on_load() # Atualiza UI
-            
+            self.on_load()  # Atualiza UI
+
         self.is_uploading = False
         yield
 
@@ -130,7 +135,7 @@ class AdvisorState(rx.State):
         """Passo 1 da Orquestração: Roda o Agente Extrator para pescar gastos do chat."""
         extractor = get_data_extractor_agent()
         response = extractor.run(text)
-        
+
         match = re.search(r'\[.*\]', response.content, re.DOTALL)
         if match:
             try:
@@ -144,54 +149,66 @@ class AdvisorState(rx.State):
                                 type=gasto.get("type", "Debito")
                             ))
                         db.commit()
-                    self.on_load() 
+                    self.on_load()
             except Exception as e:
                 print(f"Erro no parse do JSON: {e}")
 
     def submit_message(self, form_data: dict):
-        """Recebe os dados do formulário quando o usuário aperta Enter ou clica em Enviar."""
-        # Extrai a mensagem pelo nome do input (chat_input)
         user_query = form_data.get("chat_input", "")
-        
         if not user_query.strip():
             return
 
-        historico_formatado = "\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in self.chat_history])
+        historico_formatado = "\n".join(
+            [f"{msg['role'].upper()}: {msg['content']}" for msg in self.chat_history])
 
-        # Salva msg do usuário
         self.chat_history.append({"role": "user", "content": user_query})
         with rx.session() as db:
             db.add(ChatMessage(role="user", content=user_query))
             db.commit()
-            
+
         self.is_loading = True
         yield
 
         try:
             self.extract_transactions_from_text(user_query)
-            
+
             agent = get_financial_advisor(
                 financial_data=self.database_summary,
                 chat_history=historico_formatado
             )
             response = agent.run(user_query)
-            
-            self.chat_history.append({"role": "agent", "content": response.content})
+
+# BLINDAGEM DO TEXTO (A Solução Definitiva com HTML)
+            resposta_limpa = response.content
+
+            # 1. Remove APENAS os parênteses e colchetes matemáticos do LaTeX
+            caracteres_matematicos = ["\\(", "\\)", "\\[", "\\]"]
+            for char in caracteres_matematicos:
+                resposta_limpa = resposta_limpa.replace(char, "")
+
+            # 2. O Truque do HTML: Transforma o cifrão num código seguro!
+            # O navegador vai renderizar um "$" perfeito, mas o Reflex não vai ativar a matemática.
+            resposta_limpa = resposta_limpa.replace("$", "&#36;")
+
+            self.chat_history.append(
+                {"role": "agent", "content": resposta_limpa})
             with rx.session() as db:
-                db.add(ChatMessage(role="agent", content=response.content))
+                db.add(ChatMessage(role="agent", content=resposta_limpa))
                 db.commit()
-                
+
         except Exception as e:
             error_msg = f"Erro de comunicação: {str(e)}"
             self.chat_history.append({"role": "agent", "content": error_msg})
-        
+
         self.is_loading = False
 
     def clear_chat(self):
         """Apaga o histórico do chat E as transações do banco de dados."""
         with rx.session() as db:
-            db.query(ChatMessage).filter(ChatMessage.session_id == "default_user").delete()
-            db.query(Transaction).filter(Transaction.session_id == "default_user").delete()
+            db.query(ChatMessage).filter(
+                ChatMessage.session_id == "default_user").delete()
+            db.query(Transaction).filter(
+                Transaction.session_id == "default_user").delete()
             db.commit()
         self.on_load()
 
@@ -214,11 +231,12 @@ def message_bubble(message: dict) -> rx.Component:
         box_shadow="0 2px 4px rgba(0,0,0,0.20)"
     )
 
+
 def dashboard_panel() -> rx.Component:
     return rx.vstack(
         rx.heading("📊 Visão Geral", size="5"),
         rx.text("Distribuição de Gastos", color="gray"),
-        
+
         rx.recharts.pie_chart(
             rx.recharts.pie(
                 data=AdvisorState.chart_data,
@@ -234,7 +252,7 @@ def dashboard_panel() -> rx.Component:
             height=300,
             width="100%",
         ),
-        
+
         # rx.divider(),
         # rx.upload(
         #     rx.vstack(
@@ -254,7 +272,7 @@ def dashboard_panel() -> rx.Component:
         #     on_drop=AdvisorState.handle_upload(rx.upload_files(upload_id="csv_upload")),
         # ),
         # rx.cond(AdvisorState.is_uploading, rx.spinner(size="2")),
-        
+
         width="100%",
         padding="1.5em",
         border="1px solid #eaeaea",
@@ -262,19 +280,20 @@ def dashboard_panel() -> rx.Component:
         bg="white"
     )
 
+
 def index() -> rx.Component:
     return rx.center(
         rx.vstack(
-            rx.heading("💰 Assessor Financeiro Inteligente", 
-                size="8", 
-                margin_bottom="1em",
-                width="100%",
-                text_align="center"
-            ),
+            rx.heading("💰 vivIA: Sua IA Financeira",
+                       size="8",
+                       margin_bottom="1em",
+                       width="100%",
+                       text_align="center"
+                       ),
             rx.hstack(
                 # Coluna Esquerda: Dashboard (Reduzido para dar mais espaço ao chat)
                 rx.box(dashboard_panel(), width="40%"),
-                
+
                 # Coluna Direita: Chat (Aumentado)
                 rx.vstack(
                     rx.hstack(
@@ -295,15 +314,17 @@ def index() -> rx.Component:
                     rx.scroll_area(
                         rx.vstack(
                             # Renderiza as mensagens do histórico
-                            rx.foreach(AdvisorState.chat_history, message_bubble),
-                            
+                            rx.foreach(AdvisorState.chat_history,
+                                       message_bubble),
+
                             # O novo balão de "Pensamento" que só aparece quando está processando
                             rx.cond(
                                 AdvisorState.is_loading,
                                 rx.box(
                                     rx.hstack(
                                         rx.spinner(size="2"),
-                                        rx.text("Processando e consultando ferramentas...", color="gray", font_size="0.9em", font_style="italic"),
+                                        rx.text("Processando e consultando ferramentas...",
+                                                color="gray", font_size="0.9em", font_style="italic"),
                                         spacing="3",
                                         align_items="center"
                                     ),
@@ -316,22 +337,22 @@ def index() -> rx.Component:
                                 )
                             ),
                             # Garante que a rolagem fique ancorada no final
-                            padding_bottom="2em" 
+                            padding_bottom="2em"
                         ),
                         # height="550px", # Aumentamos a altura da caixa de chat
-                        height="70vh", # Aumentamos a altura da caixa de chat
+                        height="70vh",  # Aumentamos a altura da caixa de chat
                         width="100%",
                         border="1px solid #eaeaea",
                         padding="1.5em",
                         border_radius="12px",
                         background_color="#fafafa"
                     ),
-                    
+
                     # O Formulário que permite usar a tecla Enter
                     rx.form(
                         rx.hstack(
                             rx.input(
-                                name="chat_input", # Nome que o form_data vai capturar
+                                name="chat_input",  # Nome que o form_data vai capturar
                                 placeholder="Ex: Gastei 150 no borracheiro...",
                                 width="85%",
                                 size="3"
@@ -339,7 +360,8 @@ def index() -> rx.Component:
                             rx.upload(
                                 rx.button(
                                     rx.hstack(
-                                        rx.icon("paperclip", size=18), # Tamanho ajustado para caber bem no botão
+                                        # Tamanho ajustado para caber bem no botão
+                                        rx.icon("paperclip", size=18),
                                         # rx.text("Anexar Arquivo"),
                                         type="button",
                                         align="center",
@@ -358,42 +380,46 @@ def index() -> rx.Component:
                                     margin="none",
                                     padding="none",
                                     _hover={
-                                        "background_color":"blue",
+                                        "background_color": "blue",
                                         "color": "white"
                                     }
                                 ),
-                                rx.cond(AdvisorState.is_uploading, rx.spinner(size="2")),
+                                rx.cond(AdvisorState.is_uploading,
+                                        rx.spinner(size="2")),
                                 id="csv_upload",
                                 multiple=False,
                                 accept={"text/csv": [".csv"]},
                                 max_files=1,
-                                on_drop=AdvisorState.handle_upload(rx.upload_files(upload_id="csv_upload")),
+                                on_drop=AdvisorState.handle_upload(
+                                    rx.upload_files(upload_id="csv_upload")),
                                 border="none",
                                 padding="0",
                                 _hover={
                                     "cursor": "pointer",
                                     "opacity": 0.9,
-                                    "transform": "scale(1.2)", # Dá um leve "pulo" ao passar o mouse
+                                    # Dá um leve "pulo" ao passar o mouse
+                                    "transform": "scale(1.2)",
                                     "transition": "transform 0.1s ease",
                                 },
                             ),
 
                             rx.button(
                                 # Insere o ícone de envio
-                                rx.icon("send", size=22), 
+                                rx.icon("send", size=22),
                                 type="submit",
-                                loading=AdvisorState.is_loading, 
+                                loading=AdvisorState.is_loading,
                                 size="3",
-                                variant="solid", # Garante que ele fique preenchido
+                                variant="solid",  # Garante que ele fique preenchido
                                 _hover={
                                     "cursor": "pointer",
                                     "opacity": 0.9,
-                                    "transform": "scale(1.2)", # Dá um leve "pulo" ao passar o mouse
+                                    # Dá um leve "pulo" ao passar o mouse
+                                    "transform": "scale(1.2)",
                                     "transition": "transform 0.1s ease",
                                 },
-                                # "Enviar", 
+                                # "Enviar",
                                 # type="submit", # Transforma o botão num gatilho de submit
-                                # loading=AdvisorState.is_loading, 
+                                # loading=AdvisorState.is_loading,
                                 # size="3",
                                 width="10%",
                                 background_color="limegreen",
@@ -405,22 +431,25 @@ def index() -> rx.Component:
                         reset_on_submit=True,
                         width="100%"
                     ),
-                    width="100%" 
+                    width="100%"
                 ),
                 width="100%",
                 max_width="1200px",    # Garante que em telas ultra-wide o app não estique infinitamente
-                align_items="center",  # Centraliza os filhos (Heading e Grid) horizontalmente entre si
+                # Centraliza os filhos (Heading e Grid) horizontalmente entre si
+                align_items="center",
                 spacing="6"
             )
         ),
         # --- O SEGREDO PARA QUEBRAR A LIMITAÇÃO DO PAI ---
-        width="100vw",          # vw = Viewport Width. Ignora restrições do pai e pega 100% da largura real do monitor
+        # vw = Viewport Width. Ignora restrições do pai e pega 100% da largura real do monitor
+        width="100vw",
         min_height="100vh",     # vh = Viewport Height. Pega toda a altura disponível da tela
         # max_width="1400px",
         margin="0",             # Remove margens externas residuais do body/div padrão
         padding="2em",
         background_color="var(--gray-1)",
     )
+
 
 app = rx.App()
 app.add_page(index, on_load=AdvisorState.on_load)
