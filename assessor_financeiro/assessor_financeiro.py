@@ -378,10 +378,25 @@ def index() -> rx.Component:
                             ),
 
                             rx.button(
-                                "Enviar", 
-                                type="submit", # Transforma o botão num gatilho de submit
+                                # Insere o ícone de envio
+                                rx.icon("send", size=22), 
+                                type="submit",
                                 loading=AdvisorState.is_loading, 
-                                size="3"
+                                size="3",
+                                variant="solid", # Garante que ele fique preenchido
+                                _hover={
+                                    "cursor": "pointer",
+                                    "opacity": 0.9,
+                                    "transform": "scale(1.2)", # Dá um leve "pulo" ao passar o mouse
+                                    "transition": "transform 0.1s ease",
+                                },
+                                # "Enviar", 
+                                # type="submit", # Transforma o botão num gatilho de submit
+                                # loading=AdvisorState.is_loading, 
+                                # size="3",
+                                width="10%",
+                                background_color="limegreen",
+                                cursor="pointer"
                             ),
                             width="100%"
                         ),
