@@ -260,9 +260,14 @@ def dashboard_panel() -> rx.Component:
     )
 
 def index() -> rx.Component:
-    return rx.container(
+    return rx.center(
         rx.vstack(
-            rx.heading("💰 Assessor Financeiro Inteligente", size="8", margin_bottom="1em"),
+            rx.heading("💰 Assessor Financeiro Inteligente", 
+                size="8", 
+                margin_bottom="1em",
+                width="100%",
+                text_align="center"
+            ),
             rx.hstack(
                 # Coluna Esquerda: Dashboard (Reduzido para dar mais espaço ao chat)
                 rx.box(dashboard_panel(), width="28%"),
@@ -339,15 +344,21 @@ def index() -> rx.Component:
                         reset_on_submit=True,
                         width="100%"
                     ),
-                    width="90%" 
+                    width="100%" 
                 ),
                 width="100%",
-                align_items="start",
+                max_width="1200px",    # Garante que em telas ultra-wide o app não estique infinitamente
+                align_items="center",  # Centraliza os filhos (Heading e Grid) horizontalmente entre si
                 spacing="6"
             )
         ),
+        # --- O SEGREDO PARA QUEBRAR A LIMITAÇÃO DO PAI ---
+        width="100vw",          # vw = Viewport Width. Ignora restrições do pai e pega 100% da largura real do monitor
+        min_height="100vh",     # vh = Viewport Height. Pega toda a altura disponível da tela
+        # max_width="1400px",
+        margin="0",             # Remove margens externas residuais do body/div padrão
         padding="2em",
-        max_width="1400px" 
+        background_color="var(--gray-1)",
     )
 
 app = rx.App()
