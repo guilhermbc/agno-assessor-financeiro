@@ -235,25 +235,25 @@ def dashboard_panel() -> rx.Component:
             width="100%",
         ),
         
-        rx.divider(),
-        rx.upload(
-            rx.vstack(
-                rx.icon("upload", size=24),
-                rx.text("Importar Extrato (CSV)", font_size="0.9em"),
-                align_items="center",
-                padding="1em",
-                border="1px dashed #ccc",
-                border_radius="8px",
-                width="100%",
-                _hover={"bg": "gray.50", "cursor": "pointer"}
-            ),
-            id="csv_upload",
-            multiple=False,
-            accept={"text/csv": [".csv"]},
-            max_files=1,
-            on_drop=AdvisorState.handle_upload(rx.upload_files(upload_id="csv_upload")),
-        ),
-        rx.cond(AdvisorState.is_uploading, rx.spinner(size="2")),
+        # rx.divider(),
+        # rx.upload(
+        #     rx.vstack(
+        #         rx.icon("upload", size=24),
+        #         rx.text("Importar Extrato (CSV)", font_size="0.9em"),
+        #         align_items="center",
+        #         padding="1em",
+        #         border="1px dashed #ccc",
+        #         border_radius="8px",
+        #         width="100%",
+        #         _hover={"bg": "gray.50", "cursor": "pointer"}
+        #     ),
+        #     id="csv_upload",
+        #     multiple=False,
+        #     accept={"text/csv": [".csv"]},
+        #     max_files=1,
+        #     on_drop=AdvisorState.handle_upload(rx.upload_files(upload_id="csv_upload")),
+        # ),
+        # rx.cond(AdvisorState.is_uploading, rx.spinner(size="2")),
         
         width="100%",
         padding="1.5em",
@@ -332,9 +332,51 @@ def index() -> rx.Component:
                             rx.input(
                                 name="chat_input", # Nome que o form_data vai capturar
                                 placeholder="Ex: Gastei 150 no borracheiro...",
-                                width="100%",
+                                width="85%",
                                 size="3"
                             ),
+                            rx.upload(
+                                rx.button(
+                                    rx.hstack(
+                                        rx.icon("paperclip", size=18), # Tamanho ajustado para caber bem no botão
+                                        # rx.text("Anexar Arquivo"),
+                                        type="button",
+                                        align="center",
+                                        width="100%"
+                                    ),
+                                    loading=AdvisorState.is_uploading,
+                                    disabled=False,
+                                    size="3",
+                                    color="blue",
+                                    background_color="var(--gray-1)",
+                                    high_contrast=True,
+                                    cursor="pointer",
+                                    width="100%",
+                                    radius="large",
+                                    border="none",
+                                    margin="none",
+                                    padding="none",
+                                    _hover={
+                                        "background_color":"blue",
+                                        "color": "white"
+                                    }
+                                ),
+                                rx.cond(AdvisorState.is_uploading, rx.spinner(size="2")),
+                                id="csv_upload",
+                                multiple=False,
+                                accept={"text/csv": [".csv"]},
+                                max_files=1,
+                                on_drop=AdvisorState.handle_upload(rx.upload_files(upload_id="csv_upload")),
+                                border="none",
+                                padding="0",
+                                _hover={
+                                    "cursor": "pointer",
+                                    "opacity": 0.9,
+                                    "transform": "scale(1.2)", # Dá um leve "pulo" ao passar o mouse
+                                    "transition": "transform 0.1s ease",
+                                },
+                            ),
+
                             rx.button(
                                 "Enviar", 
                                 type="submit", # Transforma o botão num gatilho de submit
